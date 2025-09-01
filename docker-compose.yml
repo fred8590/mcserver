@@ -1,0 +1,35 @@
+version: "3.9"
+
+services:
+  minecraft:
+    build: .
+    container_name: mcserver
+    restart: always
+    stdin_open: true
+    tty: true
+    networks:
+      - esus
+    ports:
+      - 25565:25565   # Minecraft
+      - 8123:8123     # Dynmap
+    volumes:
+      - /volume1/Docker/Minecraft:/data:rw
+      - /volume1/Docker/Minecraft/server.properties:/data/server.properties:rw
+    environment:
+      MEMORYSIZE: "3G"
+      PAPERMC_FLAGS: ""
+      TZ: "Europe/Paris"
+      LANG: "fr_FR.UTF-8"
+      LANGUAGE: "fr_FR:fr"
+      LC_ALL: "fr_FR.UTF-8"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.minecraft-secure.entrypoints=websecure"
+      - "traefik.http.routers.minecraft-secure.rule=Host(`mcs.fbertrand.fr`)"
+      - "traefik.http.routers.minecraft-secure.service=minecraft"
+      - "traefik.http.services.minecraft.loadbalancer.server.port=25565"
+      
+networks:
+  esus:
+    external: true
