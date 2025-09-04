@@ -1,40 +1,83 @@
-FROM alpine:3.20
+# -------------------------------------------------------------------------------------------------------------------
+# Dockerfile PaperMC Alpine
+# Version Dockerfile: 	1.0.0
+# Date: 				2025-09-04
+# Créateur: 			Frédéric BERTRAND
+# Description: 			Image Alpine 3.22.1 avec OpenJDK 21, PaperMC 1.21.8-58, rcon-cli
+# 						Ports configurables via variables d'environnement (Minecraft, Dynmap, Geyser)
+# 						Locale configurable via LANG/LANGUAGE/LC_ALL (par défaut fr_FR.UTF-8)
+# -------------------------------------------------------------------------------------------------------------------
 
-# Variables
-ENV PAPER_VERSION=1.21.8 \
-    PAPER_BUILD=75 \
-    MEMORYSIZE=3G \
-    PAPERMC_FLAGS=""
+# ---- Base Alpine 3.22.1 ----
+FROM alpine:3.22.1
 
-# Dépendances nécessaires
-RUN apk add --no-cache openjdk21 curl bash git unzip
+# ---- Labels ----
+LABEL org.opencontainers.image.ref.name="alpine"
+LABEL org.opencontainers.image.version="3.22.1"
+LABEL maintainer="Fred Bertrand"
+LABEL org.opencontainers.image.title="PaperMC Alpine Docker"
+LABEL org.opencontainers.image.description="Alpine 3.22.1 + OpenJDK 21 + PaperMC 1.21.8-58 + rcon-cli"
+LABEL org.opencontainers.image.version="1.0.0"
+LABEL org.opencontainers.image.created="2025-09-04"
+# ---- Dépendances système ----
+RUN apk add --no-cache \
+    bash \
+    curl \
+    wget \
+    unzip \
+    netcat-openbsd \
+    openjdk21 \
+    libc6-compat \
+    musl-locales \
+    musl-locales-lang
 
-# Dossier de travail
+# ---- Variables d'environnement Java et locale (modifiable via docker-compose) ----
+ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
+ENV LANG=${LANG:-fr_FR.UTF-8}
+ENV LANGUAGE=${LANGUAGE:-fr_FR:fr}
+ENV LC_ALL=${LC_ALL:-fr_FR.UTF-8}
+ENV JAVAFLAGS="-Dlog4j2.formatMsgNoLookups=true -XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200"
+
+# ---- Ports configurables via environnement ----
+ENV MINECRAFT_PORT=${MINECRAFT_PORT:-25565}
+ENV DYNMAP_PORT=${DYNMAP_PORT:-8123}
+ENV GEYSER_PORT=${GEYSER_PORT:-19132}
+
+# ---- Préparer PaperMC ----
+ARG PAPERMC_VERSION=1.21.8
+ARG BUILD_NUMBER=58
+ARG DOWNLOAD_URL=https://api.papermc.io/v2/projects/paper/versions/${PAPERMC_VERSION}/builds/${BUILD_NUMBER}/downloads/paper-${PAPERMC_VERSION}-${BUILD_NUMBER}.jar
+
+RUN mkdir -p /data
+ADD ${DOWNLOAD_URL} /data/papermc-${PAPERMC_VERSION}-${BUILD_NUMBER}.jar
+
+# ---- Ajouter les plugins par défauts ----
+RUN mkdir -p /data/plugins \
+    && COPY plugins/ /data/plugins/
+    && chmod -R 755 /data/plugins
+
+# ---- Copier rcon-cli ----
+COPY rcon-cli /data/rcon-cli
+RUN chmod +x /data/rcon-cli
+
+# ---- Copier entrypoint ----
+COPY docker-entrypoint.sh /data/docker-entrypoint.sh
+RUN chmod +x /data/docker-entrypoint.sh
+
+# ---- Runtime ----
 WORKDIR /data
-RUN mkdir -p /data/plugins /data/world
+VOLUME ["/data"]
 
-# Téléchargement de PaperMC
-RUN curl -o paperclip.jar -L "https://api.papermc.io/v2/projects/paper/versions/${PAPER_VERSION}/builds/${PAPER_BUILD}/downloads/paper-${PAPER_VERSION}-${PAPER_BUILD}.jar"
+# ---- Expose ports (via Dockerfile par défaut mais modifiable via Docker Compose) ----
+EXPOSE ${MINECRAFT_PORT}/tcp ${MINECRAFT_PORT}/udp
+EXPOSE ${DYNMAP_PORT}/tcp
+EXPOSE ${GEYSER_PORT}/tcp ${GEYSER_PORT}/udp
 
-# Téléchargement des plugins
-RUN curl -L -o plugins/Dynmap-3.7-beta-10-spigot.jar https://dynmap.us/builds/dynmap/Dynmap-3.7-beta-10-spigot.jar && \
-    curl -L -o plugins/Dynmap-Multiverse-1.1.jar https://dynmap.us/builds/dynmap-multiverse/Dynmap-Multiverse-1.1.jar && \
-    curl -L -o plugins/EssentialsX-2.21.2.jar https://github.com/EssentialsX/Essentials/releases/download/2.21.2/EssentialsX-2.21.2.jar && \
-    curl -L -o plugins/LuckPerms-Bukkit-5.5.11.jar https://download.luckperms.net/1547/bukkit/LuckPerms-Bukkit-5.5.11.jar && \
-    curl -L -o plugins/multiverse-core-5.2.1.jar https://ci.onarandombox.com/job/Multiverse-Core/lastSuccessfulBuild/artifact/target/Multiverse-Core-5.2.1.jar && \
-    curl -L -o plugins/multiverse-portals-5.1.0.jar https://ci.onarandombox.com/job/Multiverse-Portals/lastSuccessfulBuild/artifact/target/Multiverse-Portals-5.1.0.jar && \
-    curl -L -o plugins/timber-1.7.1.jar https://github.com/Mrtenz/Timber/releases/download/v1.7.1/timber-1.7.1.jar && \
-    curl -L -o plugins/Vault.jar https://github.com/MilkBowl/Vault/releases/download/1.7.3/Vault.jar && \
-    curl -L -o plugins/worldedit-bukkit-7.3.16.jar https://mediafilez.forgecdn.net/files/5738/779/worldedit-bukkit-7.3.16.jar
+ENV PAPERMC_FLAGS="--nojline"
 
-# Accepter l'EULA automatiquement
-RUN echo "eula=true" > eula.txt
+# ---- Entrypoint ----
+ENTRYPOINT ["/data/docker-entrypoint.sh"]
 
-# Copie du fichier server.properties fourni
-COPY server.properties /data/server.properties
-
-# Ports Minecraft et Dynmap
-EXPOSE 25565 8123
-
-# Lancement
-CMD ["sh", "-c", "java -Xms${MEMORYSIZE} -Xmx${MEMORYSIZE} -jar paperclip.jar --nogui ${PAPERMC_FLAGS}"]
+# ---- Healthcheck sur Minecraft ----
+HEALTHCHECK CMD nc -z 127.0.0.1 ${MINECRAFT_PORT} || exit 1

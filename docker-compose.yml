@@ -1,35 +1,34 @@
-version: "3.9"
-
 services:
   minecraft:
     build: .
-    container_name: mcserver
-    restart: always
+    container_name: minecraft_server
+    restart: unless-stopped
+    environment:
+      # Locale
+      LANG: fr_FR.UTF-8
+      LANGUAGE: fr_FR:fr
+      LC_ALL: fr_FR.UTF-8
+
+      # Ports configurables
+      MINECRAFT_PORT: 25565
+      DYNMAP_PORT: 8123
+      GEYSER_PORT: 19132
+
+      # Java et PaperMC options
+      JAVAFLAGS: "-Dlog4j2.formatMsgNoLookups=true -XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200"
+      PAPERMC_FLAGS: "--nojline"
+
+    ports:
+      - "${MINECRAFT_PORT}:${MINECRAFT_PORT}/tcp"
+      - "${MINECRAFT_PORT}:${MINECRAFT_PORT}/udp"
+      - "${DYNMAP_PORT}:${DYNMAP_PORT}/tcp"
+      - "${GEYSER_PORT}:${GEYSER_PORT}/tcp"
+      - "${GEYSER_PORT}:${GEYSER_PORT}/udp"
+
+    volumes:
+      - ./data:/data
+      - ./rcon-cli:/data/rcon-cli
+      - ./docker-entrypoint.sh:/data/docker-entrypoint.sh
+
     stdin_open: true
     tty: true
-    networks:
-      - esus
-    ports:
-      - 25565:25565   # Minecraft
-      - 8123:8123     # Dynmap
-    volumes:
-      - /volume1/Docker/Minecraft:/data:rw
-      - /volume1/Docker/Minecraft/server.properties:/data/server.properties:rw
-    environment:
-      MEMORYSIZE: "3G"
-      PAPERMC_FLAGS: ""
-      TZ: "Europe/Paris"
-      LANG: "fr_FR.UTF-8"
-      LANGUAGE: "fr_FR:fr"
-      LC_ALL: "fr_FR.UTF-8"
-    labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=proxy"
-      - "traefik.http.routers.minecraft-secure.entrypoints=websecure"
-      - "traefik.http.routers.minecraft-secure.rule=Host(`mcs.fbertrand.fr`)"
-      - "traefik.http.routers.minecraft-secure.service=minecraft"
-      - "traefik.http.services.minecraft.loadbalancer.server.port=25565"
-      
-networks:
-  esus:
-    external: true
