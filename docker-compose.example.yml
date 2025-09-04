@@ -1,28 +1,26 @@
 services:
   minecraft:
-    image: elsasssquirrel/mcserver:1.21.8-58
+    image: elsasssquirrel/mcserver:1.0.0-14
     container_name: minecraft_server
     restart: unless-stopped
     stdin_open: true
     tty: true
     networks:
       - esus
-      
     ports:
       - "25565:25565/tcp"
       - "25565:25565/udp"
       - "8123:8123/tcp"
       - "19132:19132/tcp"
-      - "19132:19132/udp"
-      
+      - "19132:19132/udp" 
     volumes:
       # Données persistantes : world, config, plugins
-      - ./data:/data
+      - /volume1/Docker/MCServer:/data
       # rcon-cli et entrypoint (optionnel si tu veux les surcharger)
-      - ./rcon-cli:/data/rcon-cli
-      - ./docker-entrypoint.sh:/data/docker-entrypoint.sh
-      
+      #- ./rcon-cli:/data/rcon-cli      
     environment:
+      XMS: 512M
+      MEMORY: 2048M
       # Locale (modifiable)
       LANG: fr_FR.UTF-8
       LANGUAGE: fr_FR:fr
@@ -34,7 +32,6 @@ services:
       # Java et PaperMC options
       JAVAFLAGS: "-Dlog4j2.formatMsgNoLookups=true -XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200"
       PAPERMC_FLAGS: "--nojline"
-
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=proxy"
