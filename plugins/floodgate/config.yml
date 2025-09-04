@@ -1,5 +1,23 @@
+# Config Floodgate pour PaperMC + GeyserMC
+# Permet aux joueurs Bedrock de rejoindre sans compte Java
+
 player-link:
-  # Permet aux joueurs Bedrock de lier leur compte Java s'ils en ont un
+  # Permet aux joueurs de lier leur compte Java + Bedrock (optionnel)
   enabled: true
+  # Le service de lien par défaut (tu peux laisser "global")
+  type: global
 
 username-prefix: "."
+# Ajoute un préfixe aux pseudos Bedrock pour éviter les conflits
+# Exemple : un joueur Bedrock "Alex" devient ".Alex"
+# Tu peux mettre un autre symbole si tu veux, mais garde quelque chose de simple
+
+disconnect:
+  # Message affiché si Floodgate refuse une connexion
+  message: "§cConnexion refusée par Floodgate."
+
+metrics:
+  # Envoi de statistiques anonymes aux devs (true conseillé)
+  enabled: true
+
+# Pas besoin de changer la clé ici, Floodgate génère public-key.pem automatiquement.
