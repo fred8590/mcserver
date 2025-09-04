@@ -1,0 +1,5 @@
+player-link:
+  # Permet aux joueurs Bedrock de lier leur compte Java s'ils en ont un
+  enabled: true
+
+username-prefix: "."

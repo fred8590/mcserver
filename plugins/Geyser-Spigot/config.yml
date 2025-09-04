@@ -1,0 +1,32 @@
+bedrock:
+  # Geyser écoute sur toutes les interfaces réseau
+  address: 0.0.0.0
+  # Port par défaut pour Minecraft Bedrock
+  port: 19132
+  # Laisse false pour séparer les ports Java et Bedrock
+  clone-remote-port: false
+  # Nom affiché sur la liste des serveurs Bedrock
+  motd1: "🔥 Elsass Bro's Server 🎮"
+  motd2: "Java & Bedrock Crossplay [FR] 🇫🇷"
+
+remote:
+  # Adresse du serveur Java (PaperMC)
+  # Comme Geyser est un plugin sur le même serveur, mets localhost
+  address: 127.0.0.1
+  # Port Java du serveur
+  port: 25565
+  # Authentification
+  # - online = comptes Microsoft/Java obligatoires
+  # - floodgate = permet aux joueurs Bedrock de se connecter sans compte Java
+  # - offline = non sécurisé (déconseillé)
+  auth-type: floodgate
+
+# Si tu veux autoriser les joueurs Bedrock sans compte Java
+floodgate-key-file: public-key.pem
+
+# Réseau et performances
+general:
+  # Active la compression des paquets (meilleure perf, mais un peu plus de CPU)
+  compression-threshold: 256
+  # Distance de vue par défaut pour Bedrock (plus basse pour éviter le lag)
+  max-view-distance: 8
