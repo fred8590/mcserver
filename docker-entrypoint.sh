@@ -1,6 +1,12 @@
 #!/bin/bash
 set -e
 
+# ---- Récupérer automatiquement le nom du serveur ----
+# Utilise la variable d'environnement SERVER_NAME si définie, sinon valeur par défaut
+SERVER_NAME=${SERVER_NAME:-minecraft_server}
+export SERVER_NAME
+echo "[INFO] Nom du serveur utilisé : $SERVER_NAME"
+
 # ---- Activer le venv Python pour mcrcon et watchdog ----
 export PATH="/srv/venv/bin:$PATH"
 
