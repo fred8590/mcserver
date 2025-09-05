@@ -81,11 +81,14 @@ COPY eula.txt /srv/eula.txt
 # ---- update_dynmap_portals.py ----
 COPY update_dynmap_portals.py /srv/update_dynmap_portals.py
 
+# ---- multiverse_worlds ----
+COPY multiverse_worlds.yml /srv/multiverse_worlds.yml
+
 # ---- docker-entrypoint.sh ----
 COPY docker-entrypoint.sh /srv/docker-entrypoint.sh
 
 # ---- Attribution des droits en lecture et écriture ----
-RUN chown -R minecraft:minecraft /srv/plugins /srv/eula.txt /srv/update_dynmap_portals.py /srv/docker-entrypoint.sh \
+RUN chown -R minecraft:minecraft /srv \
     && chmod +x /srv/docker-entrypoint.sh \
     && chmod -R 755 /srv/plugins
 

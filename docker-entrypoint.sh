@@ -22,6 +22,11 @@ if [ ! -d "/data/plugins" ]; then
     cp -r /srv/plugins /data/ || echo "[WARN] Plugins non trouvés dans /srv"
 fi
 
+# ---- Copier multiverse_worlds.yml si absent ----
+if [ ! -d "/data/multiverse_worlds.yml" ]; then
+    cp -r /srv/multiverse_worlds.yml /data/ || echo "[WARN] Plugins non trouvés dans /srv"
+fi
+
 # ---- Accepter automatiquement le EULA ----
 if [ ! -f /data/eula.txt ]; then
     echo "eula=true" > /data/eula.txt
