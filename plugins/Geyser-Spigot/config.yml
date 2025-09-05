@@ -6,8 +6,8 @@ bedrock:
   # Laisse false pour séparer les ports Java et Bedrock
   clone-remote-port: false
   # Nom affiché sur la liste des serveurs Bedrock
-  motd1: "🔥 Elsass Bro's Server 🎮"
-  motd2: "Java & Bedrock Crossplay [FR] 🇫🇷"
+  motd1: "Elsass Bro's Server"
+  motd2: "Java & Bedrock Crossplay [FR]"
 
 remote:
   # Adresse du serveur Java (PaperMC)

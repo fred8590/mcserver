@@ -1,0 +1,35 @@
+checks:
+  AdvancedFly:
+    threshold: 5
+    punishment: kick
+    enabled: true
+  AdvancedKillAura:
+    threshold: 5
+    punishment: ban
+    enabled: true
+  AdvancedPacketExploit:
+    threshold: 5
+    punishment: ban
+    enabled: true
+  AdvancedSpeed:
+    threshold: 4
+    punishment: kick
+    enabled: true
+  AdvancedPhase:
+    threshold: 3
+    punishment: ban
+    enabled: true
+  AdvancedAutoClicker:
+    threshold: 10
+    punishment: tempban
+    enabled: true
+  AdvancedScaffold:
+    threshold: 7
+    punishment: ban
+    enabled: true
+banwave:
+  enabled: true
+  delay: 10 # seconds
+alerts:
+  discord_webhook: '' 
+  verbose: true
