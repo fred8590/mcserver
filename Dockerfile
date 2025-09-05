@@ -1,11 +1,12 @@
 # -------------------------------------------------------------------------------------------------------------------
 # Dockerfile PaperMC Alpine
-# Version Dockerfile: 	1.0.0
-# Date: 				2025-09-04
+# Version Dockerfile: 	1.1.0
+# Date: 				2025-09-05
 # Créateur: 			Frédéric BERTRAND
-# Description: 			Image Alpine 3.22.1 avec OpenJDK 21, PaperMC 1.21.8-58, rcon-cli
+# Description: 			Image Alpine 3.22.1 avec OpenJDK 21, PaperMC 1.21.8-58, rcon-cl
 # 						Ports configurables via variables d'environnement (Minecraft, Dynmap, Geyser)
 # 						Locale configurable via LANG/LANGUAGE/LC_ALL (par défaut fr_FR.UTF-8)
+# 						Utilisateur non-root 'minecraft' pour exécuter le serveur
 # -------------------------------------------------------------------------------------------------------------------
 
 # ---- Base Alpine 3.22.1 ----
@@ -17,8 +18,9 @@ LABEL org.opencontainers.image.version="3.22.1"
 LABEL maintainer="Fred Bertrand"
 LABEL org.opencontainers.image.title="PaperMC Alpine Docker"
 LABEL org.opencontainers.image.description="Alpine 3.22.1 + OpenJDK 21 + PaperMC 1.21.8-58 + rcon-cli"
-LABEL org.opencontainers.image.version="1.0.0"
-LABEL org.opencontainers.image.created="2025-09-04"
+LABEL org.opencontainers.image.version="1.1.0"
+LABEL org.opencontainers.image.created="2025-09-05"
+
 # ---- Dépendances système ----
 RUN apk add --no-cache \
     bash \
@@ -29,7 +31,11 @@ RUN apk add --no-cache \
     openjdk21 \
     libc6-compat \
     musl-locales \
-    musl-locales-lang
+    eudev-libs \
+    eudev-dev \
+    build-base \
+    musl-locales-lang \
+    shadow  # pour usermod et groupadd
 
 # ---- Variables d'environnement Java et locale (modifiable via docker-compose) ----
 ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk
@@ -50,29 +56,34 @@ ENV DYNMAP_PORT=${DYNMAP_PORT}
 ARG GEYSER_PORT=19132
 ENV GEYSER_PORT=${GEYSER_PORT}
 
+# ---- Créer un utilisateur non-root 'minecraft' ----
+RUN addgroup -S minecraft && adduser -S -G minecraft minecraft \
+    && mkdir -p /data /srv \
+    && chown -R minecraft:minecraft /data /srv
+
 # ---- Préparer PaperMC ----
 ARG PAPERMC_VERSION=1.21.8
 ARG BUILD_NUMBER=58
 ARG DOWNLOAD_URL=https://api.papermc.io/v2/projects/paper/versions/${PAPERMC_VERSION}/builds/${BUILD_NUMBER}/downloads/paper-${PAPERMC_VERSION}-${BUILD_NUMBER}.jar
 
-RUN mkdir -p /data
-RUN mkdir -p /srv
 ADD ${DOWNLOAD_URL} /srv/papermc-${PAPERMC_VERSION}-${BUILD_NUMBER}.jar
+RUN chown minecraft:minecraft /srv/papermc-${PAPERMC_VERSION}-${BUILD_NUMBER}.jar
 
 # ---- Ajouter les plugins par défauts ----
 COPY plugins /srv/plugins/
-RUN chmod -R 755 /srv
+RUN chown -R minecraft:minecraft /srv/plugins && chmod -R 755 /srv/plugins
 
-# ---- Copier rcon-cli ----
+# ---- Copier rcon-cli (si utilisé) ----
 #COPY rcon-cli /srv/rcon-cli
-#RUN chmod +x /srv/rcon-cli
+#RUN chown minecraft:minecraft /srv/rcon-cli && chmod +x /srv/rcon-cli
 
 # ---- Copier eula.txt ----
 COPY eula.txt /srv/eula.txt
+RUN chown minecraft:minecraft /srv/eula.txt
 
 # ---- Copier entrypoint ----
 COPY docker-entrypoint.sh /srv/docker-entrypoint.sh
-RUN chmod +x /srv/docker-entrypoint.sh
+RUN chown minecraft:minecraft /srv/docker-entrypoint.sh && chmod +x /srv/docker-entrypoint.sh
 
 # ---- Runtime ----
 WORKDIR /data
@@ -83,10 +94,8 @@ EXPOSE ${MINECRAFT_PORT}/tcp ${MINECRAFT_PORT}/udp
 EXPOSE ${DYNMAP_PORT}/tcp
 EXPOSE ${GEYSER_PORT}/tcp ${GEYSER_PORT}/udp
 
+# ---- Utilisateur non-root par défaut ----
+USER minecraft
+
 ENV PAPERMC_FLAGS="--nojline"
-
-# ---- Entrypoint ----
 ENTRYPOINT ["/srv/docker-entrypoint.sh"]
-
-# ---- Healthcheck sur Minecraft ----
-HEALTHCHECK CMD nc -z 127.0.0.1 ${MINECRAFT_PORT} || exit 1
