@@ -76,6 +76,7 @@ RUN chown minecraft:minecraft /srv/papermc-${PAPERMC_VERSION}-${BUILD_NUMBER}.ja
 # ---- Copier les plugins et eula ----
 COPY plugins /srv/plugins/
 COPY eula.txt /srv/eula.txt
+COPY update_dynmap_portals.py /srv/update_dynmap_portals.py
 RUN chown -R minecraft:minecraft /srv/plugins /srv/eula.txt && chmod -R 755 /srv/plugins
 
 # ---- Copier docker-entrypoint.sh ----
@@ -101,3 +102,4 @@ USER minecraft
 ENV PATH="/srv/venv/bin:$PATH"
 ENV PAPERMC_FLAGS="--nojline"
 ENTRYPOINT ["/srv/docker-entrypoint.sh"]
+
