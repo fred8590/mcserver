@@ -1,9 +1,9 @@
 # -------------------------------------------------------------------------------------------------------------------
-# Dockerfile PaperMC Alpine
-# Version Dockerfile: 	1.1.0
+# Dockerfile PaperMC Alpine avec Python venv et mcrcon + watchdog
+# Version Dockerfile: 	1.2.0
 # Date: 				2025-09-05
 # Créateur: 			Frédéric BERTRAND
-# Description: 			Image Alpine 3.22.1 avec OpenJDK 21, PaperMC 1.21.8-58, rcon-cl
+# Description: 			Alpine 3.22.1 + OpenJDK 21 + PaperMC 1.21.8-58 + rcon/mcrcon pour scripts Python
 # 						Ports configurables via variables d'environnement (Minecraft, Dynmap, Geyser)
 # 						Locale configurable via LANG/LANGUAGE/LC_ALL (par défaut fr_FR.UTF-8)
 # 						Utilisateur non-root 'minecraft' pour exécuter le serveur
@@ -17,8 +17,8 @@ LABEL org.opencontainers.image.ref.name="alpine"
 LABEL org.opencontainers.image.version="3.22.1"
 LABEL maintainer="Fred Bertrand"
 LABEL org.opencontainers.image.title="PaperMC Alpine Docker"
-LABEL org.opencontainers.image.description="Alpine 3.22.1 + OpenJDK 21 + PaperMC 1.21.8-58 + rcon-cli"
-LABEL org.opencontainers.image.version="1.1.0"
+LABEL org.opencontainers.image.description="Alpine 3.22.1 + OpenJDK 21 + PaperMC 1.21.8-58 + Python venv + mcrcon"
+LABEL org.opencontainers.image.version="1.2.0"
 LABEL org.opencontainers.image.created="2025-09-05"
 
 # ---- Dépendances système ----
@@ -35,7 +35,11 @@ RUN apk add --no-cache \
     eudev-dev \
     build-base \
     musl-locales-lang \
-    shadow  # pour usermod et groupadd
+    shadow \   # pour usermod et groupadd
+    python3 \
+    py3-pip \
+    py3-wheel \
+    git
 
 # ---- Variables d'environnement Java et locale (modifiable via docker-compose) ----
 ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk
@@ -69,33 +73,31 @@ ARG DOWNLOAD_URL=https://api.papermc.io/v2/projects/paper/versions/${PAPERMC_VER
 ADD ${DOWNLOAD_URL} /srv/papermc-${PAPERMC_VERSION}-${BUILD_NUMBER}.jar
 RUN chown minecraft:minecraft /srv/papermc-${PAPERMC_VERSION}-${BUILD_NUMBER}.jar
 
-# ---- Ajouter les plugins par défauts ----
+# ---- Copier les plugins et eula ----
 COPY plugins /srv/plugins/
-RUN chown -R minecraft:minecraft /srv/plugins && chmod -R 755 /srv/plugins
-
-# ---- Copier rcon-cli (si utilisé) ----
-#COPY rcon-cli /srv/rcon-cli
-#RUN chown minecraft:minecraft /srv/rcon-cli && chmod +x /srv/rcon-cli
-
-# ---- Copier eula.txt ----
 COPY eula.txt /srv/eula.txt
-RUN chown minecraft:minecraft /srv/eula.txt
+RUN chown -R minecraft:minecraft /srv/plugins /srv/eula.txt && chmod -R 755 /srv/plugins
 
-# ---- Copier entrypoint ----
+# ---- Copier docker-entrypoint.sh ----
 COPY docker-entrypoint.sh /srv/docker-entrypoint.sh
 RUN chown minecraft:minecraft /srv/docker-entrypoint.sh && chmod +x /srv/docker-entrypoint.sh
 
-# ---- Runtime ----
-WORKDIR /data
-VOLUME ["/data"]
+# ---- Installer watchdog et mcrcon dans un venv Python ----
+RUN python3 -m venv /srv/venv \
+    && /srv/venv/bin/pip install --no-cache-dir --upgrade pip setuptools wheel \
+    && /srv/venv/bin/pip install --no-cache-dir mcrcon watchdog PyYAML
 
 # ---- Expose ports (via Dockerfile par défaut mais modifiable via Docker Compose) ----
 EXPOSE ${MINECRAFT_PORT}/tcp ${MINECRAFT_PORT}/udp
 EXPOSE ${DYNMAP_PORT}/tcp
 EXPOSE ${GEYSER_PORT}/tcp ${GEYSER_PORT}/udp
 
+# ---- Runtime ----
+WORKDIR /data
+VOLUME ["/data"]
+
 # ---- Utilisateur non-root par défaut ----
 USER minecraft
-
+ENV PATH="/srv/venv/bin:$PATH"
 ENV PAPERMC_FLAGS="--nojline"
 ENTRYPOINT ["/srv/docker-entrypoint.sh"]
