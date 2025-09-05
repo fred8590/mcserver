@@ -3,32 +3,35 @@ services:
     build: .
     container_name: minecraft_server
     restart: unless-stopped
+    tty: true
+    stdin_open: true
+    ports:
+      - "25565:25565/tcp"
+      - "25565:25565/udp"
+      - "8123:8123/tcp"
+      - "19132:19132/tcp"
+      - "19132:19132/udp"
     environment:
-      # Locale
+      SERVER_NAME: "PangermanieServer"
+      # Memory configuration
+      MEMORY: "4096M"
+      XMS: "1024M"
+      # Locale configuration
       LANG: fr_FR.UTF-8
       LANGUAGE: fr_FR:fr
       LC_ALL: fr_FR.UTF-8
-
-      # Ports configurables
+      # Ports configuration
       MINECRAFT_PORT: 25565
       DYNMAP_PORT: 8123
       GEYSER_PORT: 19132
+      # RCON configuration
+      RCON_HOST: "localhost"
+      RCON_PORT: 25575
+      RCON_PASSWORD: "changeme"
+      MINECRAFT_CONTAINER: "minecraft_server"  # utile pour reload Docker fallback
 
       # Java et PaperMC options
       JAVAFLAGS: "-Dlog4j2.formatMsgNoLookups=true -XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200"
       PAPERMC_FLAGS: "--nojline"
-
-    ports:
-      - "${MINECRAFT_PORT}:${MINECRAFT_PORT}/tcp"
-      - "${MINECRAFT_PORT}:${MINECRAFT_PORT}/udp"
-      - "${DYNMAP_PORT}:${DYNMAP_PORT}/tcp"
-      - "${GEYSER_PORT}:${GEYSER_PORT}/tcp"
-      - "${GEYSER_PORT}:${GEYSER_PORT}/udp"
-
     volumes:
       - ./data:/data
-      - ./rcon-cli:/data/rcon-cli
-      - ./docker-entrypoint.sh:/data/docker-entrypoint.sh
-
-    stdin_open: true
-    tty: true

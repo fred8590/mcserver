@@ -1,6 +1,6 @@
 # -------------------------------------------------------------------------------------------------------------------
 # Dockerfile PaperMC Alpine avec Python venv et mcrcon + watchdog
-# Version Dockerfile: 	1.2.0
+# Version Dockerfile: 	1.3.1
 # Date: 				2025-09-05
 # Créateur: 			Frédéric BERTRAND
 # Description: 			Alpine 3.22.1 + OpenJDK 21 + PaperMC 1.21.8-58 + rcon/mcrcon pour scripts Python
@@ -12,13 +12,12 @@
 # ---- Base Alpine 3.22.1 ----
 FROM alpine:3.22.1
 
-# ---- Labels ----
-LABEL org.opencontainers.image.ref.name="alpine"
-LABEL org.opencontainers.image.version="3.22.1"
+# ---- Base Alpine 3.22.1 ----
 LABEL maintainer="Fred Bertrand"
 LABEL org.opencontainers.image.title="PaperMC Alpine Docker"
+LABEL org.opencontainers.image.version="1.3.1"
 LABEL org.opencontainers.image.description="Alpine 3.22.1 + OpenJDK 21 + PaperMC 1.21.8-58 + Python venv + mcrcon"
-LABEL org.opencontainers.image.version="1.2.0"
+LABEL org.opencontainers.image.version="1.3.1"
 LABEL org.opencontainers.image.created="2025-09-05"
 
 # ---- Dépendances système ----
@@ -31,11 +30,11 @@ RUN apk add --no-cache \
     openjdk21 \
     libc6-compat \
     musl-locales \
+    musl-locales-lang \
     eudev-libs \
     eudev-dev \
     build-base \
-    musl-locales-lang \
-    shadow \   # pour usermod et groupadd
+    shadow \
     python3 \
     py3-pip \
     py3-wheel \
@@ -65,7 +64,7 @@ RUN addgroup -S minecraft && adduser -S -G minecraft minecraft \
     && mkdir -p /data /srv \
     && chown -R minecraft:minecraft /data /srv
 
-# ---- Préparer PaperMC ----
+# ---- Installer PaperMC ----
 ARG PAPERMC_VERSION=1.21.8
 ARG BUILD_NUMBER=58
 ARG DOWNLOAD_URL=https://api.papermc.io/v2/projects/paper/versions/${PAPERMC_VERSION}/builds/${BUILD_NUMBER}/downloads/paper-${PAPERMC_VERSION}-${BUILD_NUMBER}.jar
@@ -73,15 +72,22 @@ ARG DOWNLOAD_URL=https://api.papermc.io/v2/projects/paper/versions/${PAPERMC_VER
 ADD ${DOWNLOAD_URL} /srv/papermc-${PAPERMC_VERSION}-${BUILD_NUMBER}.jar
 RUN chown minecraft:minecraft /srv/papermc-${PAPERMC_VERSION}-${BUILD_NUMBER}.jar
 
-# ---- Copier les plugins et eula ----
+# ---- Copier le repertoire des plugins ----
 COPY plugins /srv/plugins/
-COPY eula.txt /srv/eula.txt
-COPY update_dynmap_portals.py /srv/update_dynmap_portals.py
-RUN chown -R minecraft:minecraft /srv/plugins /srv/eula.txt && chmod -R 755 /srv/plugins
 
-# ---- Copier docker-entrypoint.sh ----
+# ---- Copier les eula ----
+COPY eula.txt /srv/eula.txt
+
+# ---- update_dynmap_portals.py ----
+COPY update_dynmap_portals.py /srv/update_dynmap_portals.py
+
+# ---- docker-entrypoint.sh ----
 COPY docker-entrypoint.sh /srv/docker-entrypoint.sh
-RUN chown minecraft:minecraft /srv/docker-entrypoint.sh && chmod +x /srv/docker-entrypoint.sh
+
+# ---- Attribution des droits en lecture et écriture ----
+RUN chown -R minecraft:minecraft /srv/plugins /srv/eula.txt /srv/update_dynmap_portals.py /srv/docker-entrypoint.sh \
+    && chmod +x /srv/docker-entrypoint.sh \
+    && chmod -R 755 /srv/plugins
 
 # ---- Installer watchdog et mcrcon dans un venv Python ----
 RUN python3 -m venv /srv/venv \
@@ -96,10 +102,9 @@ EXPOSE ${GEYSER_PORT}/tcp ${GEYSER_PORT}/udp
 # ---- Runtime ----
 WORKDIR /data
 VOLUME ["/data"]
-
 # ---- Utilisateur non-root par défaut ----
 USER minecraft
 ENV PATH="/srv/venv/bin:$PATH"
 ENV PAPERMC_FLAGS="--nojline"
-ENTRYPOINT ["/srv/docker-entrypoint.sh"]
 
+ENTRYPOINT ["/srv/docker-entrypoint.sh"]
