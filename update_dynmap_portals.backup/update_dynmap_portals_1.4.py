@@ -1,0 +1,140 @@
+#!/usr/bin/env python3
+import yaml
+import os
+import shutil
+import time
+import subprocess
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+from mcrcon import MCRcon
+
+# ---------------- CONFIGURATION ----------------
+MV_PORTALS_FILE = "/data/plugins/Multiverse-Portals/portals.yml"
+DYNMAP_MARKERS_FILE = "/data/plugins/dynmap/markers/portals.yml"
+
+# Docker container name (pour le fallback)
+MINECRAFT_CONTAINER = os.environ.get("MINECRAFT_CONTAINER", "minecraft")
+
+# RCON settings
+RCON_HOST = os.environ.get("RCON_HOST", "localhost")
+RCON_PORT = int(os.environ.get("RCON_PORT", 25575))
+RCON_PASSWORD = os.environ.get("RCON_PASSWORD", "changeme")
+
+
+# Mapping des mondes pour Dynmap
+world_name_mapping = {
+    "world": "Pangermanie",                                  #A RECUPERER
+    "world_nether": "Nether",                                #A RECUPERER
+    "world_the_end": "Ender",                                #A RECUPERER
+    "world2": "Terres Sauvages"                              #A RECUPERER
+}
+
+# ---- Fonction de rechargement Dynmap ----
+def reload_dynmap():
+    # 1️Essai via RCON
+    try:
+        with MCRcon(RCON_HOST, RCON_PASSWORD, port=RCON_PORT) as mcr:
+            resp = mcr.command("dynmap reload")
+            print(f"[OK] Dynmap rechargé via RCON : {resp}")
+            return
+    except Exception as e:
+        print(f"[WARN] Impossible de recharger Dynmap via RCON : {e}")
+
+    # 2️Essai via Docker exec
+    try:
+        result = subprocess.run(
+            ["docker", "exec", MINECRAFT_CONTAINER, "rcon-cli", "dynmap", "reload"],
+            check=True,
+            capture_output=True,
+            text=True
+        )
+        print(f"[OK] Dynmap rechargé via Docker exec : {result.stdout.strip()}")
+        return
+    except FileNotFoundError:
+        # Docker non installé
+        pass
+    except subprocess.CalledProcessError as e:
+        print(f"[WARN] Échec du rechargement via Docker exec : {e.stderr.strip()}")
+
+    # 3️Si tout échoue
+    print("[WARN] rcon-cli non disponible, Dynmap n'a pas été rechargé automatiquement")
+
+# ---------------- FONCTION PRINCIPALE ----------------
+def update_dynmap_portals():
+    if not os.path.exists(MV_PORTALS_FILE):
+        print(f"[ERREUR] Le fichier Multiverse-Portals n'existe pas : {MV_PORTALS_FILE}")
+        return
+
+
+    # Charger les portails Multiverse
+    with open(MV_PORTALS_FILE, "r") as f:
+        portals_data = yaml.safe_load(f) or {}
+
+    # Backup du fichier Dynmap existant
+    if os.path.exists(DYNMAP_MARKERS_FILE):
+        shutil.copy2(DYNMAP_MARKERS_FILE, DYNMAP_MARKERS_FILE + ".bak")
+        print(f"[INFO] Backup créé : {DYNMAP_MARKERS_FILE}.bak")
+
+    # Structure Dynmap
+    dynmap_markers = {
+        "markersets": {
+            "portals": {
+                "label": "Portails",
+                "hide_by_default": False,
+                "markers": {}
+            }
+        }
+    }
+
+    for portal_name, portal_info in portals_data.get("portals", {}).items():
+        world_id = portal_info.get("world")
+        if world_id not in world_name_mapping:
+            continue
+        x, y, z = portal_info.get("x"), portal_info.get("y"), portal_info.get("z")
+        if None in (x, y, z):
+            continue
+        marker = {
+            "x": x,
+            "y": y,
+            "z": z,
+            "world": world_name_mapping[world_id],
+            "icon": "green",
+            "label": portal_name
+        }
+        dynmap_markers["markersets"]["portals"]["markers"][portal_name] = marker
+
+    # Écrire le fichier Dynmap
+    os.makedirs(os.path.dirname(DYNMAP_MARKERS_FILE), exist_ok=True)
+    with open(DYNMAP_MARKERS_FILE, "w") as f:
+        yaml.dump(dynmap_markers, f, sort_keys=False)
+
+    print(f"[OK] Fichier Dynmap mis à jour : {DYNMAP_MARKERS_FILE}")
+
+    # ---- Recharger Dynmap avec fallback ----
+    reload_dynmap()
+
+# ---------------- Watchdog ----------------
+class PortalsHandler(FileSystemEventHandler):
+    def on_modified(self, event):
+        if event.src_path == MV_PORTALS_FILE:
+            print(f"[INFO] Changement détecté sur {MV_PORTALS_FILE}")
+            update_dynmap_portals()
+
+# ---------------- Main ----------------
+if __name__ == "__main__":
+    # Lancement initial
+    update_dynmap_portals()
+
+    # Surveillance
+    event_handler = PortalsHandler()
+    observer = Observer()
+    observer.schedule(event_handler, path=os.path.dirname(MV_PORTALS_FILE), recursive=False)
+    observer.start()
+    print("[INFO] Surveillance activée sur portals.yml")
+
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        observer.stop()
+    observer.join()
