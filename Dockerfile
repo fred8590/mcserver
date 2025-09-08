@@ -67,9 +67,6 @@ RUN chown minecraft:minecraft /srv/papermc-${PAPERMC_VERSION}-${BUILD_NUMBER}.ja
 # ---- Copier le repertoire des plugins ----
 COPY plugins /srv/plugins/
 
-# ---- Copier les eula ----
-COPY eula.txt /srv/eula.txt
-
 # ---- docker-entrypoint.sh ----
 COPY docker-entrypoint.sh /srv/docker-entrypoint.sh
 
@@ -92,3 +89,4 @@ USER minecraft
 ENV PAPERMC_FLAGS="--nojline"
 
 ENTRYPOINT ["/srv/docker-entrypoint.sh"]
+
