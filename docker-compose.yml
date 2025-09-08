@@ -9,8 +9,8 @@ services:
       - esus
     ports:
       # Minecraft Java externe standard pour joueurs → interne obfusqué
-      - "25565:35665/tcp"
-      - "25565:35665/udp"
+      - "35665:35665/tcp"
+      - "35665:35665/udp"
       # Geyser Bedrock (si besoin) → interne obfusqué
       - "19132:28123/tcp"
       - "19132:28123/udp"
@@ -54,3 +54,4 @@ services:
 networks:
   esus:
     external: true
+
