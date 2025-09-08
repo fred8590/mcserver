@@ -1,37 +1,56 @@
 services:
   minecraft:
-    build: .
-    container_name: minecraft_server
+    image: elsasssquirrel/mcserver:1.0.0-18
+    container_name: ebmcserver_ng
     restart: unless-stopped
-    tty: true
     stdin_open: true
+    tty: true
+    networks:
+      - esus
     ports:
-      - "25565:25565/tcp"
-      - "25565:25565/udp"
-      - "8123:8123/tcp"
-      - "19132:19132/tcp"
-      - "19132:19132/udp"
+      # Minecraft Java externe standard pour joueurs → interne obfusqué
+      - "25565:35665/tcp"
+      - "25565:35665/udp"
+      # Geyser Bedrock (si besoin) → interne obfusqué
+      - "19132:28123/tcp"
+      - "19132:28123/udp"
+    volumes:
+      - /volume1/Docker/MCServer:/data   
     environment:
-      SERVER_NAME: "PangermanieServer"
-      # Memory configuration
-      MEMORY: "4096M"
-      XMS: "1024M"
-      # Locale configuration
+      XMS: 512M
+      MEMORY: 2048M
       LANG: fr_FR.UTF-8
       LANGUAGE: fr_FR:fr
       LC_ALL: fr_FR.UTF-8
-      # Ports configuration
-      MINECRAFT_PORT: 25565
-      DYNMAP_PORT: 8123
-      GEYSER_PORT: 19132
-      # RCON configuration
-      RCON_HOST: "localhost"
-      RCON_PORT: 25575
-      RCON_PASSWORD: "changeme"
-      MINECRAFT_CONTAINER: "minecraft_server"  # utile pour reload Docker fallback
-
-      # Java et PaperMC options
+      MINECRAFT_PORT: 35665
+      DYNMAP_PORT: 18123
+      GEYSER_PORT: 28123
       JAVAFLAGS: "-Dlog4j2.formatMsgNoLookups=true -XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200"
       PAPERMC_FLAGS: "--nojline"
-    volumes:
-      - ./data:/data
+    labels:
+      # Activer Traefik
+      - "traefik.enable=true"
+      - "traefik.docker.network=esus"
+
+      # Minecraft Java via Traefik TCP (optionnel si tu veux HTTPS TCP)
+      - "traefik.tcp.routers.minecraft.rule=HostSNI(`minecraft.fbertrand.fr`)"
+      - "traefik.tcp.routers.minecraft.entrypoints=minecraft"
+      - "traefik.tcp.routers.minecraft.service=minecraft"
+      - "traefik.tcp.services.minecraft.loadbalancer.server.port=35665"
+
+      # Dynmap HTTPS via Traefik
+      - "traefik.http.routers.dynmap.entrypoints=websecure"
+      - "traefik.http.routers.dynmap.rule=Host(`dynmap.fbertrand.fr`)"
+      - "traefik.http.routers.dynmap.service=dynmap"
+      - "traefik.http.services.dynmap.loadbalancer.server.port=18123"
+      - "traefik.http.routers.dynmap.tls=true"
+
+      # Geyser Bedrock (optionnel) exposé si nécessaire
+      - "traefik.tcp.routers.geyser.rule=HostSNI(`bedrock.fbertrand.fr`)"
+      - "traefik.tcp.routers.geyser.entrypoints=bedrock"
+      - "traefik.tcp.routers.geyser.service=geyser"
+      - "traefik.tcp.services.geyser.loadbalancer.server.port=28123"
+
+networks:
+  esus:
+    external: true

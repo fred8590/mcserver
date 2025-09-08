@@ -1,9 +1,9 @@
 # -------------------------------------------------------------------------------------------------------------------
-# Dockerfile PaperMC Alpine avec Python venv et mcrcon + watchdog
-# Version Dockerfile: 	1.3.1
+# Dockerfile PaperMC Alpine
+# Version Dockerfile: 	1.3.3
 # Date: 				2025-09-05
 # Créateur: 			Frédéric BERTRAND
-# Description: 			Alpine 3.22.1 + OpenJDK 21 + PaperMC 1.21.8-58 + rcon/mcrcon pour scripts Python
+# Description: 			Alpine 3.22.1 + OpenJDK 21 + PaperMC 1.21.8-58
 # 						Ports configurables via variables d'environnement (Minecraft, Dynmap, Geyser)
 # 						Locale configurable via LANG/LANGUAGE/LC_ALL (par défaut fr_FR.UTF-8)
 # 						Utilisateur non-root 'minecraft' pour exécuter le serveur
@@ -14,16 +14,14 @@ FROM alpine:3.22.1
 
 # ---- Base Alpine 3.22.1 ----
 LABEL maintainer="Fred Bertrand"
-LABEL org.opencontainers.image.title="PaperMC Alpine Docker"
-LABEL org.opencontainers.image.version="1.3.1"
-LABEL org.opencontainers.image.description="Alpine 3.22.1 + OpenJDK 21 + PaperMC 1.21.8-58 + Python venv + mcrcon"
-LABEL org.opencontainers.image.version="1.3.1"
+LABEL org.opencontainers.image.title="ElsassBro's MC Server"
+LABEL org.opencontainers.image.description="Alpine 3.22.1 + OpenJDK 21 + PaperMC 1.21.8-58"
+LABEL org.opencontainers.image.version="1.3.3"
 LABEL org.opencontainers.image.created="2025-09-05"
 
 # ---- Dépendances système ----
 RUN apk add --no-cache \
     bash \
-    curl \
     wget \
     unzip \
     netcat-openbsd \
@@ -32,13 +30,7 @@ RUN apk add --no-cache \
     musl-locales \
     musl-locales-lang \
     eudev-libs \
-    eudev-dev \
-    build-base \
-    shadow \
-    python3 \
-    py3-pip \
-    py3-wheel \
-    git
+    eudev-dev
 
 # ---- Variables d'environnement Java et locale (modifiable via docker-compose) ----
 ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk
@@ -52,11 +44,11 @@ ENV LC_ALL=${LC_ALL}
 ENV JAVAFLAGS="-Dlog4j2.formatMsgNoLookups=true -XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200"
 
 # ---- Ports configurables via environnement ----
-ARG MINECRAFT_PORT=25565
+ARG MINECRAFT_PORT=35665
 ENV MINECRAFT_PORT=${MINECRAFT_PORT}
-ARG DYNMAP_PORT=8123
+ARG DYNMAP_PORT=18123
 ENV DYNMAP_PORT=${DYNMAP_PORT}
-ARG GEYSER_PORT=19132
+ARG GEYSER_PORT=28123
 ENV GEYSER_PORT=${GEYSER_PORT}
 
 # ---- Créer un utilisateur non-root 'minecraft' ----
@@ -78,12 +70,6 @@ COPY plugins /srv/plugins/
 # ---- Copier les eula ----
 COPY eula.txt /srv/eula.txt
 
-# ---- update_dynmap_portals.py ----
-COPY update_dynmap_portals.py /srv/update_dynmap_portals.py
-
-# ---- multiverse_worlds ----
-COPY multiverse_worlds.yml /srv/multiverse_worlds.yml
-
 # ---- docker-entrypoint.sh ----
 COPY docker-entrypoint.sh /srv/docker-entrypoint.sh
 
@@ -92,22 +78,17 @@ RUN chown -R minecraft:minecraft /srv \
     && chmod +x /srv/docker-entrypoint.sh \
     && chmod -R 755 /srv/plugins
 
-# ---- Installer watchdog et mcrcon dans un venv Python ----
-RUN python3 -m venv /srv/venv \
-    && /srv/venv/bin/pip install --no-cache-dir --upgrade pip setuptools wheel \
-    && /srv/venv/bin/pip install --no-cache-dir mcrcon watchdog PyYAML
-
 # ---- Expose ports (via Dockerfile par défaut mais modifiable via Docker Compose) ----
-EXPOSE ${MINECRAFT_PORT}/tcp ${MINECRAFT_PORT}/udp
-EXPOSE ${DYNMAP_PORT}/tcp
-EXPOSE ${GEYSER_PORT}/tcp ${GEYSER_PORT}/udp
+EXPOSE 35665/tcp 35665/udp
+EXPOSE 18123/tcp
+EXPOSE 28123/tcp 28123/udp
 
 # ---- Runtime ----
 WORKDIR /data
 VOLUME ["/data"]
+
 # ---- Utilisateur non-root par défaut ----
 USER minecraft
-ENV PATH="/srv/venv/bin:$PATH"
 ENV PAPERMC_FLAGS="--nojline"
 
 ENTRYPOINT ["/srv/docker-entrypoint.sh"]
